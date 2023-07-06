@@ -4,7 +4,6 @@ module.exports = {
         "browser": true,
         "node": true,
         "es6": true,
-        // "jquery": true
         "jest": true,
         "jsx-control-statements/jsx-control-statements": true
     },
@@ -15,9 +14,6 @@ module.exports = {
             "jsx": true,
             "experimentalObjectRestSpread": true
         }
-    },
-    "globals": {
-        // "wx": "readonly",
     },
     "extends": [
         "eslint:recommended",
@@ -34,8 +30,12 @@ module.exports = {
     "rules": {
         "prettier/prettier": 1,
         "no-extra-semi": 2, // 禁止不必要的分号
-        "quotes": ['error', 'single'], // 强制使用单引号
         "no-unused-vars": 0, // 不允许未定义的变量
-        "jsx-control-statements/jsx-use-if-tag": 0
+        "jsx-control-statements/jsx-use-if-tag": 0,
+        "no-control-regex": 0, // 正则表达式中是否出现控制字符。
+        "react/prop-types": 0, // 禁用文件中的 react/prop-types 规则
+        "no-useless-escape": 0, // 禁用不必要的转义
+        "jsx-control-statements/jsx-jcs-no-undef": 0,
+        // "react/display-name": 0,
     }
 };

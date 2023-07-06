@@ -1,7 +1,6 @@
 const ora = require('ora');
-const chalk = require('chalk');
 const webpack = require('webpack');
-const webpackConfig = require('./webpack.prod');
+const webpackConfig = require('./webpack.prod.publish');
 
 const spinner = ora('webpack编译开始...\n').start();
 

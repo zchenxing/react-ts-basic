@@ -1,10 +1,7 @@
 import { createContext, useContext } from 'react'
-import { STORE_TODO, TodoStore } from '@/pages/page1/store/todo'
 
 function createStores() {
-    return {
-        [STORE_TODO]: new TodoStore(),
-    }
+    return {}
 }
 
 const stores = createStores()

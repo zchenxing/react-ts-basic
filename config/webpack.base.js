@@ -1,170 +1,136 @@
-const path = require('path');
-const argv = require('yargs').argv;
-const webpack = require('webpack');
-const merge = require('webpack-merge');
+const path = require("path");
 const HtmlWebpackPlugin = require('html-webpack-plugin');
-const InterpolateHtmlPlugin = require('interpolate-html-plugin');
-const { CleanWebpackPlugin } = require('clean-webpack-plugin');
-const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
-const CopyWebpackPlugin = require('copy-webpack-plugin');
-const config = require('./config');
-const getClientEnvironment = require('./env');
+const MiniCssExtractPlugin = require("mini-css-extract-plugin");
+const webpack = require("webpack");
+const ESLintPlugin = require('eslint-webpack-plugin');
+const config = require("./config");
 
+const isDev = process.env.NODE_ENV === "development";
 const APP_PATH = path.resolve(__dirname, '../src');
 
-const bundleAnalyzerReport = argv.report;
-const env = getClientEnvironment(config.publicPath);
 
-const webpackConfig = {
-    plugins: []
-};
-if (bundleAnalyzerReport) {
-    webpackConfig.plugins.push(new BundleAnalyzerPlugin({
-        analyzerMode: 'static',
-        openAnalyzer: false,
-        reportFilename: path.join(config.assetsRoot, './report.html')
-    }));
-}
-
-module.exports = merge(webpackConfig, {
+module.exports = {
     devtool: 'cheap-module-eval-source-map',
     entry: {
-        app: './src/index.tsx',
-        // vendor: ['react', 'react-dom', 'antd', 'mobx', 'mobx-react'] // 不变的代码分包
+        app: path.resolve(__dirname, "../src/index.tsx"),
     },
     output: {
-        filename: 'js/[name].bundle.js',
-        path: config.assetsRoot,
-        publicPath: config.publicPath
+        filename: "static/js/[name].[chunkhash:8].js", // 每个输出js的名称
+        path: path.resolve(__dirname, "../build"), // 打包的出口文件夹路径
+        clean: true, // webpack4需要配置clean-webpack-plugin删除dist文件，webpack5内置了。
+        publicPath: "/", // 打包后文件的公共前缀路径
+    },
+    resolve: {
+        extensions: ['.json', '.tsx', '.ts', '.jsx', '.js'],
+        alias: {
+            "@": APP_PATH,
+        },
+        modules: [path.resolve(__dirname, "../node_modules")],
     },
     module: {
         rules: [
-            // 把这个配置放在所有loader之前
             {
+                test: /\.(j|t)sx?$/,
+                include: APP_PATH,
                 enforce: 'pre',
-                test: /\.tsx?$/,
                 exclude: /node_modules/,
-                include: [APP_PATH],
-                loader: 'eslint-loader',
-                options: {
-                    emitWarning: true, // 这个配置需要打开，才能在控制台输出warning信息
-                    emitError: true, // 这个配置需要打开，才能在控制台输出error信息
-                    fix: true // 是否自动修复，如果是，每次保存时会自动修复可以修复的部分
-                }
+                use: ["thread-loader", 'babel-loader'],
             },
             {
-                oneOf: [
+                test: /\.css$/,
+                use: [
+                    isDev ? "style-loader" : MiniCssExtractPlugin.loader,
+                    'css-loader',
+                    'postcss-loader',
+                ]
+            },
+            {
+                test: /\.less$/,
+                use: [
+                    isDev ? "style-loader" : MiniCssExtractPlugin.loader,
+                    'css-loader',
+                    'postcss-loader',
                     {
-                        test: /\.(html)$/,
-                        loader: 'html-loader'
-                    },
-                    {
-                        test: /\.(j|t)sx?$/,
-                        include: APP_PATH,
-                        use: [
-                            {
-                                loader: 'babel-loader',
-                                options: {
-                                    presets: [
-                                        '@babel/preset-react',  // jsx支持
-                                        ['@babel/preset-env', { useBuiltIns: 'usage', corejs: 2 }] // 按需使用polyfill
-                                    ],
-                                    plugins: [
-                                        '@babel/plugin-syntax-dynamic-import',
-                                        ['@babel/plugin-proposal-class-properties', { 'loose': true }] // class中的箭头函数中的this指向组件
-                                    ],
-                                    cacheDirectory: true // 加快编译速度
-                                }
-                            },
-                            {
-                                loader: 'awesome-typescript-loader',
-                                options: {
-                                    silent: true
-                                }
-                            }
-                        ]
-                    },
-                    {
-                        test: /\.(less|css)$/,
-                        use: [
-                            { loader: 'style-loader' },
-                            {
-                                loader: 'css-loader',
-                                options: {
-                                    modules: false
-                                }
-                            },
-                            'postcss-loader',
-                            {
-                                loader: 'less-loader',
-                                options: { javascriptEnabled: true }
-                            }
-                        ]
-                    },
-                    {
-                        test: /\.svg$/,
-                        use: ['@svgr/webpack']
-                    },
-                    {
-                        test: /\.(jpg|jpeg|bmp|png|webp|gif)$/,
-                        loader: 'url-loader',
+                        loader: 'less-loader',
                         options: {
-                            limit: 6 * 1024,
-                            name: 'static/media/[name].[hash:8].[ext]',
+                            lessOptions: {
+                                javascriptEnabled: true
+                            }
                         }
-                    },
-                    {
-                        exclude: [/\.(js|mjs|ts|tsx|less|css|jsx)$/, /\.html$/, /\.json$/],
-                        loader: 'file-loader',
-                        options: {
-                            name: 'static/media/[path][name].[hash:8].[ext]',
-                        }
-                    },
-                    {
-                        test: /\.(jpe?g|png|gif|svg)$/,
-                        loader: 'image-webpack-loader',
-                        enforce: "pre"
                     }
                 ]
-            }
+            },
+            {
+                test: /\.svg$/i,
+                issuer: /\.[jt]sx?$/,
+                use: ['@svgr/webpack'],
+            },
+            {
+                test: /\.(csv|xlsx|ico)$/,
+                exclude: /node_modules/,
+                use: [
+                    {
+                        loader: 'file-loader',
+                        options: {
+                            name: 'static/file/[name].[contenthash:6][ext]',
+                        }
+                    }
+                ]
+            },
+            {
+                test: /\.(png|jpg|gif|jpeg|webp)$/,
+                type: 'asset',
+                parser: {
+                    //转base64的条件
+                    dataUrlCondition: {
+                        maxSize: 10 * 1024, // 10kb
+                    },
+                },
+                generator: {
+                    filename: "static/images/[name].[contenthash:6][ext]",
+                },
+            },
+            {
+                test: /\.(woff|woff2|eot|ttf|otf)$/i,
+                type: 'asset',
+                generator: {
+                    filename: "static/fonts/[name].[contenthash:6][ext]", // 文件输出目录和命名
+                },
+            },
+            {
+                test: /\.(mp4|webm|ogg|mp3|wav|flac|aac)$/, // 匹配媒体文件
+                type: "asset", // type选择asset
+                parser: {
+                    dataUrlCondition: {
+                        maxSize: 10 * 1024, // 小于10kb转base64位
+                    },
+                },
+                generator: {
+                    filename: "static/media/[name].[contenthash:6][ext]", // 文件输出目录和命名
+                },
+            },
+
         ]
     },
-    resolve: {
-        extensions: ['.js', '.json', '.jsx', '.ts', '.tsx'],
-        alias: {
-            '@': path.resolve(__dirname, '../src/')
-        }
-    },
     plugins: [
-        // 清理打包目录
-        new CleanWebpackPlugin(),
         new HtmlWebpackPlugin({
             inject: true,
             template: config.indexPath,
             showErrors: true
         }),
-        new HtmlWebpackPlugin({
-            inject: true,
-            template: config.enIndexPath,
-            filename: 'en/index.html',
-            showErrors: true
-        }),
         // 在html模板中能够使用环境变量
         // <link rel="shortcut icon" href="%PUBLIC_URL%/favicon.ico">
-        new InterpolateHtmlPlugin(env.raw),
-        // 在js代码中能够使用环境变量(demo: process.env.NODE_ENV === 'production')
-        new webpack.DefinePlugin(env.stringified),
-        // 忽略moment的国际化库
-        // new webpack.IgnorePlugin(/^\.\/locale$/, /moment$/)
-        new CopyWebpackPlugin([
-            {
-                from: 'public',
-                ignore: ['index.html']
-            }
-        ]),
-        new webpack.DllReferencePlugin({
-            manifest: require('../public/vendor.json')
+        new webpack.DefinePlugin({
+            "process.env.BASE_ENV": JSON.stringify(process.env.BASE_ENV),
+        }),
+        new ESLintPlugin({
+            fix: true,
+            extensions: ['js', 'ts', 'tsx'],
+            exclude: 'node_modules'
         })
     ],
-    optimization: {}
-});
+    // 开启webpack持久化存储缓存
+    cache: {
+        type: "filesystem", // 使用文件缓存
+    },
+}

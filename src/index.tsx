@@ -1,6 +1,10 @@
 import React from 'react'
-import ReactDOM from 'react-dom'
+import { createRoot } from 'react-dom/client'
 import App from '@/App'
 import '@/assets/style/style.less'
 
-ReactDOM.render(<App />, document.getElementById('root'))
+const root = document.getElementById('root')
+
+if (root) {
+    createRoot(root).render(<App />)
+}
